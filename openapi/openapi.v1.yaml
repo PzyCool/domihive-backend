@@ -1,0 +1,752 @@
+openapi: 3.0.3
+info:
+  title: DomiHive Unified Backend API
+  version: 1.0.0
+  description: >
+    Baseline v1 OpenAPI contract for DomiHive modular monolith backend,
+    aligned to execution plan dated April 25, 2026.
+servers:
+  - url: http://localhost:4000
+    description: Local backend
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Tenant
+  - name: Admin
+  - name: Landlord
+  - name: Workforce
+  - name: Core
+paths:
+  /health:
+    get:
+      tags: [Core]
+      summary: Service health check
+      security: []
+      responses:
+        '200':
+          description: Healthy
+  /api/v1/auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+              required: [phone, password]
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkEnvelope' }
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone: { type: string }
+                password: { type: string }
+              required: [phone, password]
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkEnvelope' }
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      responses:
+        '200':
+          description: Logged out
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      responses:
+        '200':
+          description: Token refreshed
+  /api/v1/auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify OTP
+      security: []
+      responses:
+        '200':
+          description: OTP verified
+  /api/v1/auth/me:
+    get:
+      tags: [Auth]
+      summary: Authenticated profile
+      responses:
+        '200':
+          description: Profile payload
+  /api/v1/invites:
+    post:
+      tags: [Core]
+      summary: Create invite
+      responses:
+        '201':
+          description: Invite created
+  /api/v1/invites/{inviteId}/accept:
+    post:
+      tags: [Core]
+      summary: Accept invite
+      parameters:
+        - $ref: '#/components/parameters/InviteId'
+      security: []
+      responses:
+        '200':
+          description: Invite accepted
+
+  /api/v1/tenant/listings:
+    get:
+      tags: [Tenant]
+      summary: List tenant browse listings
+      parameters:
+        - in: query
+          name: state
+          schema: { type: string }
+        - in: query
+          name: area
+          schema: { type: string }
+        - in: query
+          name: location
+          schema: { type: string }
+        - in: query
+          name: propertyType
+          schema: { type: string }
+      responses:
+        '200':
+          description: Listing feed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OkEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/Listing' }
+                          syncedAt:
+                            type: string
+                            format: date-time
+  /api/v1/tenant/listings/{listingId}:
+    get:
+      tags: [Tenant]
+      summary: Get listing details
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      responses:
+        '200':
+          description: Listing item
+  /api/v1/tenant/inspections:
+    post:
+      tags: [Tenant]
+      summary: Book inspection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listingId: { type: string }
+                inspectionDate: { type: string, format: date }
+                inspectionTime: { type: string }
+                attendees: { type: integer, minimum: 1 }
+              required: [listingId, inspectionDate, inspectionTime]
+      responses:
+        '201':
+          description: Inspection booked
+  /api/v1/tenant/inspections/my:
+    get:
+      tags: [Tenant]
+      summary: Get my inspections
+      responses:
+        '200':
+          description: Inspection list
+  /api/v1/tenant/inspections/{inspectionId}/reschedule:
+    patch:
+      tags: [Tenant]
+      summary: Reschedule inspection
+      parameters:
+        - $ref: '#/components/parameters/InspectionId'
+      responses:
+        '200':
+          description: Rescheduled
+
+  /api/v1/tenant/applications:
+    post:
+      tags: [Tenant]
+      summary: Create rental application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                listingId: { type: string }
+              required: [listingId]
+      responses:
+        '201':
+          description: Application created
+    get:
+      tags: [Tenant]
+      summary: Get my applications
+      responses:
+        '200':
+          description: Applications list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OkEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/RentalApplication' }
+  /api/v1/tenant/applications/{applicationId}:
+    get:
+      tags: [Tenant]
+      summary: Get application by id
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Application item
+    patch:
+      tags: [Tenant]
+      summary: Update application
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '200':
+          description: Updated
+  /api/v1/tenant/applications/{applicationId}/documents:
+    post:
+      tags: [Tenant]
+      summary: Upload application document metadata
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '201':
+          description: Uploaded
+  /api/v1/tenant/applications/{applicationId}/payments:
+    post:
+      tags: [Tenant]
+      summary: Submit application payment
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      responses:
+        '201':
+          description: Payment captured
+
+  /api/v1/tenant/properties/my:
+    get:
+      tags: [Tenant]
+      summary: Get my tenancy properties
+      responses:
+        '200':
+          description: My properties
+  /api/v1/tenant/properties/{propertyId}/move-in:
+    patch:
+      tags: [Tenant]
+      summary: Complete move-in checklist
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      responses:
+        '200':
+          description: Move-in confirmed
+
+  /api/v1/tenant/maintenance:
+    post:
+      tags: [Tenant]
+      summary: Create maintenance ticket
+      responses:
+        '201':
+          description: Ticket created
+  /api/v1/tenant/maintenance/my:
+    get:
+      tags: [Tenant]
+      summary: List my maintenance tickets
+      responses:
+        '200':
+          description: Ticket list
+
+  /api/v1/tenant/messages/threads:
+    get:
+      tags: [Tenant]
+      summary: List message threads
+      responses:
+        '200':
+          description: Threads
+    post:
+      tags: [Tenant]
+      summary: Create message thread
+      responses:
+        '201':
+          description: Thread created
+  /api/v1/tenant/messages/threads/{threadId}/messages:
+    post:
+      tags: [Tenant]
+      summary: Send message in thread
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '201':
+          description: Message created
+
+  /api/v1/tenant/notifications:
+    get:
+      tags: [Tenant]
+      summary: Get notifications
+      responses:
+        '200':
+          description: Notifications
+  /api/v1/tenant/notifications/read:
+    patch:
+      tags: [Tenant]
+      summary: Mark notifications as read
+      responses:
+        '200':
+          description: Updated
+
+  /api/v1/admin/properties:
+    get:
+      tags: [Admin]
+      summary: List properties
+      responses:
+        '200':
+          description: Property list
+    post:
+      tags: [Admin]
+      summary: Create property
+      responses:
+        '201':
+          description: Property created
+  /api/v1/admin/properties/{propertyId}:
+    get:
+      tags: [Admin]
+      summary: Get property
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      responses:
+        '200':
+          description: Property item
+    patch:
+      tags: [Admin]
+      summary: Update property
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      responses:
+        '200':
+          description: Property updated
+  /api/v1/admin/properties/{propertyId}/units:
+    post:
+      tags: [Admin]
+      summary: Create unit
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      responses:
+        '201':
+          description: Unit created
+  /api/v1/admin/units/{unitId}:
+    patch:
+      tags: [Admin]
+      summary: Update unit
+      parameters:
+        - $ref: '#/components/parameters/UnitId'
+      responses:
+        '200':
+          description: Unit updated
+
+  /api/v1/admin/applications:
+    get:
+      tags: [Admin]
+      summary: List applications
+      responses:
+        '200':
+          description: Applications list
+  /api/v1/admin/applications/{applicationId}/status:
+    patch:
+      tags: [Admin]
+      summary: Update application status
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  $ref: '#/components/schemas/ApplicationStatus'
+              required: [status]
+      responses:
+        '200':
+          description: Status updated
+
+  /api/v1/admin/inspections:
+    get:
+      tags: [Admin]
+      summary: List inspections
+      responses:
+        '200':
+          description: Inspections list
+  /api/v1/admin/inspections/{inspectionId}/status:
+    patch:
+      tags: [Admin]
+      summary: Update inspection status
+      parameters:
+        - $ref: '#/components/parameters/InspectionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  $ref: '#/components/schemas/InspectionStatus'
+              required: [status]
+      responses:
+        '200':
+          description: Status updated
+
+  /api/v1/admin/tenants:
+    get:
+      tags: [Admin]
+      summary: List tenants
+      responses:
+        '200':
+          description: Tenants list
+  /api/v1/admin/maintenance:
+    get:
+      tags: [Admin]
+      summary: List maintenance tickets
+      responses:
+        '200':
+          description: Maintenance list
+  /api/v1/admin/maintenance/{ticketId}:
+    patch:
+      tags: [Admin]
+      summary: Update maintenance ticket
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Ticket updated
+  /api/v1/admin/payments:
+    get:
+      tags: [Admin]
+      summary: List payments
+      responses:
+        '200':
+          description: Payment list
+  /api/v1/admin/reports:
+    get:
+      tags: [Admin]
+      summary: Dashboard reports
+      responses:
+        '200':
+          description: Report payload
+  /api/v1/admin/clients:
+    get:
+      tags: [Admin]
+      summary: List clients
+      responses:
+        '200':
+          description: Client list
+  /api/v1/admin/clients/contracts:
+    post:
+      tags: [Admin]
+      summary: Create client contract
+      responses:
+        '201':
+          description: Contract created
+
+  /api/v1/landlord/properties:
+    get:
+      tags: [Landlord]
+      summary: List landlord properties
+      responses:
+        '200':
+          description: Property list
+  /api/v1/landlord/tenancies:
+    get:
+      tags: [Landlord]
+      summary: List landlord tenancies
+      responses:
+        '200':
+          description: Tenancy list
+  /api/v1/landlord/payouts:
+    get:
+      tags: [Landlord]
+      summary: List settlement payouts
+      responses:
+        '200':
+          description: Payout list
+  /api/v1/landlord/contracts:
+    get:
+      tags: [Landlord]
+      summary: List contracts
+      responses:
+        '200':
+          description: Contract list
+
+  /api/v1/workforce/employees:
+    get:
+      tags: [Workforce]
+      summary: List workforce employees
+      responses:
+        '200':
+          description: Employee list
+    post:
+      tags: [Workforce]
+      summary: Create workforce employee
+      responses:
+        '201':
+          description: Employee created
+  /api/v1/workforce/onboarding/templates:
+    get:
+      tags: [Workforce]
+      summary: List onboarding document templates
+      responses:
+        '200':
+          description: Template list
+  /api/v1/workforce/onboarding/documents:
+    post:
+      tags: [Workforce]
+      summary: Create onboarding document
+      responses:
+        '201':
+          description: Document created
+  /api/v1/workforce/guarantor-requests:
+    post:
+      tags: [Workforce]
+      summary: Create guarantor request
+      responses:
+        '201':
+          description: Request created
+  /api/v1/workforce/guarantor-responses/{token}:
+    post:
+      tags: [Workforce]
+      summary: Submit guarantor response using external token
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema: { type: string }
+      responses:
+        '201':
+          description: Response submitted
+  /api/v1/workforce/report-templates:
+    get:
+      tags: [Workforce]
+      summary: List report templates
+      responses:
+        '200':
+          description: Template list
+  /api/v1/workforce/job-reports:
+    post:
+      tags: [Workforce]
+      summary: Submit job report
+      responses:
+        '201':
+          description: Job report created
+  /api/v1/workforce/announcements:
+    get:
+      tags: [Workforce]
+      summary: List announcements
+      responses:
+        '200':
+          description: Announcement list
+    post:
+      tags: [Workforce]
+      summary: Create announcement
+      responses:
+        '201':
+          description: Announcement created
+  /api/v1/workforce/meetings:
+    get:
+      tags: [Workforce]
+      summary: List meetings
+      responses:
+        '200':
+          description: Meeting list
+    post:
+      tags: [Workforce]
+      summary: Create meeting
+      responses:
+        '201':
+          description: Meeting created
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    ListingId:
+      in: path
+      name: listingId
+      required: true
+      schema: { type: string }
+    ApplicationId:
+      in: path
+      name: applicationId
+      required: true
+      schema: { type: string }
+    InspectionId:
+      in: path
+      name: inspectionId
+      required: true
+      schema: { type: string }
+    PropertyId:
+      in: path
+      name: propertyId
+      required: true
+      schema: { type: string }
+    UnitId:
+      in: path
+      name: unitId
+      required: true
+      schema: { type: string }
+    InviteId:
+      in: path
+      name: inviteId
+      required: true
+      schema: { type: string }
+    ThreadId:
+      in: path
+      name: threadId
+      required: true
+      schema: { type: string }
+  schemas:
+    OkEnvelope:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          nullable: true
+        meta:
+          type: object
+          additionalProperties: true
+      required: [ok]
+    ErrorEnvelope:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          nullable: true
+      required: [ok, code, message]
+    ApplicationStatus:
+      type: string
+      enum:
+        - INSPECTION_SCHEDULED
+        - INSPECTION_VERIFIED
+        - APPLICATION_STARTED
+        - APPLICATION_SUBMITTED
+        - UNDER_REVIEW
+        - APPROVED
+        - REJECTED
+        - CANCELLED
+    InspectionStatus:
+      type: string
+      enum:
+        - PENDING_CONFIRMATION
+        - SCHEDULED
+        - NO_SHOW
+        - INSPECTION_COMPLETED
+    TenancyStatus:
+      type: string
+      enum: [PENDING_MOVE_IN, ACTIVE, ENDED]
+    Listing:
+      type: object
+      properties:
+        id: { type: string }
+        listingId: { type: string }
+        propertyId: { type: string }
+        unitId: { type: string }
+        unitCode: { type: string }
+        title: { type: string }
+        description: { type: string }
+        price: { type: number }
+        cautionFee: { type: number }
+        bedrooms: { type: integer }
+        bathrooms: { type: integer }
+        size: { type: string }
+        state: { type: string }
+        area: { type: string }
+        locationName: { type: string }
+        location: { type: string }
+        address: { type: string }
+        postalCode: { type: string }
+        propertyType: { type: string }
+        propertyTypeLabel: { type: string }
+        buildingType: { type: string }
+        buildingTypeLabel: { type: string }
+        managementType: { type: string }
+        isEstate: { type: boolean }
+        propertyAge: { type: string }
+        petsAllowed: { type: boolean }
+        furnishing: { type: string }
+        amenityIds:
+          type: array
+          items: { type: string }
+        images:
+          type: array
+          items: { type: string }
+        image: { type: string }
+        tenantStatus: { type: string }
+        canBook: { type: boolean }
+        forRent: { type: boolean }
+    RentalApplication:
+      type: object
+      properties:
+        id: { type: string }
+        listingId: { type: string }
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        inspectionStatus:
+          $ref: '#/components/schemas/InspectionStatus'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }

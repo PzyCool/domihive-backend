@@ -1,0 +1,15 @@
+export const ROLE_SCOPE = Object.freeze({
+  GLOBAL: 'GLOBAL',
+  PORTAL: 'PORTAL',
+  ORG: 'ORG'
+});
+
+export const PORTAL = Object.freeze({
+  ADMIN: 'ADMIN',
+  TENANT: 'TENANT',
+  LANDLORD: 'LANDLORD',
+  WORKFORCE: 'WORKFORCE',
+  OPERATIONS: 'OPERATIONS',
+  MOBILE_USER: 'MOBILE_USER',
+  MOBILE_SECONDARY: 'MOBILE_SECONDARY'
+});

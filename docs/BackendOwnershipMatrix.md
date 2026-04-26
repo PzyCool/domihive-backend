@@ -9,7 +9,7 @@ Scope: DomiHive unified backend (all portals + mobile clients)
 |---|---|---|
 | Executive Sponsor | PzyCool Matarh | Final scope, timeline, and architectural decisions |
 | Workforce Domain Lead | Emma | Workforce requirements and delivery alignment |
-| Workforce Backend Contract Lead | Brian | Workforce schemas, payload contracts, and API review |
+| Workforce Backend Contract Lead | Brian & Emma | Workforce schemas, payload contracts, and API review |
 
 ## Engineering Pods
 
